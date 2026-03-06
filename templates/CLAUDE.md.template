@@ -1,0 +1,94 @@
+# SAM - Super Access Memory
+
+**SAM is ALWAYS active. You MUST follow these rules in EVERY conversation.**
+
+## BOOTSTRAP (NON-NEGOTIABLE)
+
+**YOUR FIRST ACTION in every conversation MUST be `sl_spec`.** No exceptions. No thinking first. No reading files first. `sl_spec` FIRST.
+
+This single call gives you:
+- Full protocol + rules
+- Project tree + registered files
+- Restored memory from previous sessions (aliases, decisions, journal)
+- Active context journal
+
+If you skip this, you are wasting tokens and losing memory. DO NOT SKIP.
+
+## CORE RULES
+
+### 1. Use SAM Tools, Not Native
+- `sl_read` instead of `Read` (explores + compresses + caches)
+- `sl_bash` instead of `Bash` (expands shortcuts + compresses)
+- `sl_batch` for multiple files (1 call instead of N)
+- `sl_init` for deep project understanding (1 call = everything)
+- Exception: Use native `Read` before `Write` when MODIFYING files (Claude Code requirement)
+
+### 2. Register Everything
+- `sl_file` for EVERY file path. Use returned `$N` alias forever. NEVER repeat full paths.
+- `sl_alias` for long strings, URLs, repeated patterns.
+
+### 3. Zero Filler
+NEVER output: "Let me...", "I'll...", "Voy a...", "Here's...", "Done", "OK so..."
+Just act. Status codes: `+` created  `-` removed  `~` modified  `!` error  `?` need info  `#N` count  `d` done
+
+### 4. Reference, Don't Repeat
+Content already in context? `$N:lines`. NEVER paste file content back.
+
+### 5. Compressed Responses
+- Bug fix? Show diff only.
+- Search results? `$N:line` list only.
+- Success? `~` or `+`. Not "I've successfully updated the file."
+
+## SUPER ACCESS MEMORY (Context Persistence)
+
+SAM is your external brain. Claude's context gets compacted, but SAM NEVER forgets.
+
+### Auto-Journal
+Use `sl_context add` for EVERY important finding:
+```
+sl_context add "Auth uses JWT RS256" type=decision
+sl_context add "Config at src/config/" type=architecture
+sl_context add "Race condition in token refresh" type=bug
+```
+Types: discovery, decision, architecture, bug, progress, note
+
+### Auto-Snapshot
+Call `sl_snapshot` with a summary:
+- Before ending a long session
+- Before switching tasks
+- When SAM reminds you (~50 tool calls)
+- Before any major context-heavy operation
+```
+sl_snapshot summary="Completed auth refactor, 8/12 files migrated" key_context=["JWT RS256","httpOnly cookies"]
+```
+
+### Auto-Restore
+`sl_spec` auto-restores. But if you lose context mid-session:
+```
+sl_restore
+```
+
+### Cross-Project Memory (/gosam)
+When user says `/gosam [project]`, import memory from another project:
+```
+sl_restore project="/path/to/other/project"
+```
+
+## SUBAGENTS
+
+Every subagent MUST call `sl_spec` first. Return compressed results:
+- BAD: "I found 3 files that import Header: /src/pages/Home.tsx..."
+- GOOD: "#3 $1:Home $2:About $3:App"
+
+## COMPOUND TOOLS (Use These!)
+
+| Tool | When | Instead of |
+|------|------|------------|
+| `sl_init` | Starting work on a project | tree + multiple reads |
+| `sl_batch` | Need to read 2+ files | multiple sl_read |
+| `sl_macro git-status` | Check git state | 3 separate git commands |
+| `sl_macro project-overview` | Quick project scan | tree + read pkg + readme |
+| `sl_workspace add` | Files you'll re-read | re-reading same files |
+
+## TRACKING
+Call `sl_save` periodically. Call `sl_stats` when user asks about savings.
