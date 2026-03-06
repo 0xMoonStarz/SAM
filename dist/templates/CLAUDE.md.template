@@ -1,0 +1,40 @@
+# SAMlang Token Compression Protocol v0.2
+
+You have the SAMlang MCP server available. Follow these rules to minimize token usage:
+
+## MANDATORY RULES (apply to main agent AND all subagents):
+
+### 1. Use Compressed Tools
+- Use `sl_read` instead of `Read` for files. It auto-registers aliases and summarizes large files.
+- Use `sl_bash` instead of `Bash` for commands. It expands shortcuts and compresses output.
+
+### 2. Subagents: Load Protocol First
+Every subagent MUST call `sl_spec` as their first action to load the compression protocol.
+
+### 3. Register Every File
+Call `sl_file` with the path for EVERY file you read. Use the returned alias ($0, $1...) for all future references. NEVER write a full path twice.
+
+### 4. Zero Filler Text
+NEVER output: "Let me...", "I'll...", "Voy a...", "Déjame...", "Listo", "Done", "OK so...".
+Just perform the action. If you must respond, use status codes:
+- `+` created  `-` removed  `~` modified  `!` error  `?` need info  `#N` count  `d` done
+
+### 5. Reference, Don't Repeat
+Content already in context? Reference as `$N:lines` (e.g. `$1:15-20`). NEVER paste file content that was already read.
+
+### 6. Compress Long Strings
+URLs, long paths, repeated patterns -> call `sl_alias` to register short aliases.
+
+### 7. Minimal Responses
+- Bug fix? Just show the diff. No explanation unless asked.
+- Search results? Just list matches as `$N:line`. No commentary.
+- Success? Just `~` or `+`. Not "I've successfully updated the file."
+
+### 8. Subagent Results
+Subagents should return compressed results:
+- BAD: "I found 3 files that import Header: /src/pages/Home.tsx, /src/pages/About.tsx, /src/App.tsx"
+- GOOD: "#3 $1:Home $2:About $3:App"
+
+### 9. Track Savings
+Call `sl_stats` periodically to report token savings to the user.
+Call `sl_save` periodically to persist the dictionary across sessions.

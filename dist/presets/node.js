@@ -1,0 +1,29 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.NODE_PRESET = void 0;
+exports.NODE_PRESET = {
+    name: "node",
+    detect: ["express", "fastify", "koa", "nestjs", "hapi"],
+    paths: {
+        "$rt": "./src/routes",
+        "$ctrl": "./src/controllers",
+        "$mdw": "./src/middleware",
+        "$mdl": "./src/models",
+        "$srv": "./src/services",
+        "$cfg": "./config",
+        "$db": "./src/db",
+        "$tst": "./tests",
+    },
+    snippets: {
+        ".rq": "require",
+        ".me": "module.exports",
+        ".nx": "next()",
+        ".rr": "req, res",
+        ".rrn": "req, res, next",
+        ".rj": "res.json",
+        ".rs": "res.status",
+        ".aw": "await",
+        ".tc": "try { } catch(e) { }",
+    },
+};
+//# sourceMappingURL=node.js.map
