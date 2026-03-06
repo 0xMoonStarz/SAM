@@ -31,11 +31,19 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "  [!!] Install failed. Try running as Administrator." -ForegroundColor Red
     exit 1
 }
+Write-Host "  [OK] Installed" -ForegroundColor Green
 
-# Configure
-Write-Host "  [..] Configuring MCP server..."
-sam install
+# Verify
+Write-Host ""
+$samCmd = Get-Command sam -ErrorAction SilentlyContinue
+if (-not $samCmd) {
+    Write-Host "  [!!] 'sam' command not found in PATH." -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "  [OK] sam CLI available" -ForegroundColor Green
+sam doctor
 
 Write-Host ""
-Write-Host "  Done! Restart Claude Code to activate SAM." -ForegroundColor Green
+Write-Host "  Restart Claude Code to activate SAM." -ForegroundColor Green
 Write-Host ""

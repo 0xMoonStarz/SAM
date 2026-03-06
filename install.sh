@@ -23,17 +23,32 @@ echo "  [OK] Node.js $(node -v)"
 # Clean previous install
 if npm list -g sam-cc &> /dev/null; then
     echo "  [..] Removing previous SAM install..."
-    sudo npm uninstall -g sam-cc 2>/dev/null || npm uninstall -g sam-cc 2>/dev/null || true
+    npm uninstall -g sam-cc 2>/dev/null || sudo npm uninstall -g sam-cc 2>/dev/null || true
 fi
 
-# Install from GitHub
+# Install — try without sudo first, fallback to sudo
 echo "  [..] Installing from GitHub..."
-sudo npm install -g github:0xMoonStarz/SAM 2>/dev/null || npm install -g github:0xMoonStarz/SAM
+if npm install -g github:0xMoonStarz/SAM 2>/dev/null; then
+    echo "  [OK] Installed"
+elif sudo npm install -g github:0xMoonStarz/SAM; then
+    echo "  [OK] Installed (with sudo)"
+else
+    echo "  [!!] Install failed."
+    echo "  If using nvm: nvm use 18 && npm install -g github:0xMoonStarz/SAM"
+    exit 1
+fi
 
-# Configure
-echo "  [..] Configuring MCP server..."
-sam install
+# Verify
+echo ""
+if ! command -v sam &> /dev/null; then
+    echo "  [!!] 'sam' command not found in PATH."
+    echo "  Try: export PATH=\"\$(npm config get prefix)/bin:\$PATH\""
+    exit 1
+fi
+
+echo "  [OK] sam CLI available"
+sam doctor
 
 echo ""
-echo "  Done! Restart Claude Code to activate SAM."
+echo "  Restart Claude Code to activate SAM."
 echo ""

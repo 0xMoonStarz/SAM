@@ -49,42 +49,53 @@ Every dollar goes directly to maintaining SAM, shipping new features, and keepin
 
 **Requirements:** [Node.js](https://nodejs.org) >= 18 + [Claude Code](https://docs.anthropic.com/en/docs/claude-code) >= 2.0
 
-### Linux / macOS
+### One command (all platforms)
 
 ```bash
-sudo npm install -g github:0xMoonStarz/SAM
-sam install
-```
-
-### Windows (CMD or PowerShell as Administrator)
-
-```cmd
 npm install -g github:0xMoonStarz/SAM
-sam install
 ```
 
-### After install
+That's it. SAM auto-compiles and auto-registers its MCP server. **Restart Claude Code** and you're good.
 
-Restart Claude Code. SAM is now active. That's it.
+> On Linux, if you get a permission error, try with `sudo` or use [nvm](https://github.com/nvm-sh/nvm) (recommended).
 
-`sam install` does two things:
-1. **Registers the MCP server globally** in `~/.claude/settings.json` — works in every project, no per-project setup
-2. **Creates/appends** the compression protocol to the current project's `CLAUDE.md`
+### Alternative: install script
+
+**Linux / macOS:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/0xMoonStarz/SAM/main/install.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/0xMoonStarz/SAM/main/install.ps1 | iex
+```
+
+### Optional: add SAM protocol to your project
+
+```bash
+cd your-project
+sam install    # creates CLAUDE.md with compression protocol
+```
 
 ### Verify
 
 ```bash
-sam --help          # CLI is working
-sam dict            # Show persisted dictionary
-sam presets          # Show available framework presets
+sam doctor     # check everything is configured
+sam status     # show registration info
+```
+
+### Update
+
+```bash
+sam update
 ```
 
 ### Uninstall
 
 ```bash
 sam uninstall
-sudo npm uninstall -g sam-cc    # Linux/macOS
-npm uninstall -g sam-cc         # Windows
+npm uninstall -g sam-cc
 ```
 
 ---
