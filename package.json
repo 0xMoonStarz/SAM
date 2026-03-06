@@ -14,8 +14,8 @@
   ],
   "scripts": {
     "build": "tsc",
-    "prepare": "tsc 2>/dev/null || true",
-    "postinstall": "node dist/cli/index.js postinstall || true",
+    "prepare": "node -e \"try{require('child_process').execSync('tsc',{stdio:'inherit'})}catch(e){}\"",
+    "postinstall": "node -e \"try{require('child_process').execSync('node dist/cli/index.js postinstall',{stdio:'inherit'})}catch(e){}\"",
     "dev": "tsc --watch",
     "test": "node --test dist/tests/*.test.js",
     "start:mcp": "node dist/mcp-server/index.js",
