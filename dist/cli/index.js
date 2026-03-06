@@ -4,6 +4,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const fs_1 = require("fs");
 const path_1 = require("path");
 const os_1 = require("os");
+const child_process_1 = require("child_process");
 const index_js_1 = require("../presets/index.js");
 const persistence_js_1 = require("../mcp-server/persistence.js");
 const SAM_MCP_CONFIG = {
@@ -154,17 +155,19 @@ SAM v1.0 - Serialized Abstraction Machine for Claude Code
 Commands:
   install    Install SAM MCP server globally + CLAUDE.md protocol in current project
   uninstall  Remove SAM from Claude settings
+  update     Update SAM to latest version from GitHub
   status     Show SAM registration status and dictionary info
   doctor     Diagnose configuration issues
   presets    Show available framework presets
   dict       Show persisted dictionary
   help       Show this message
 
-Usage:
-  Linux/macOS:  sudo npm install -g github:0xMoonStarz/SAM
-  Windows:      npm install -g github:0xMoonStarz/SAM  (as Administrator)
+Install/Update:
+  Linux/macOS: curl -fsSL https://raw.githubusercontent.com/0xMoonStarz/SAM/main/install.sh | bash
+  Windows:     irm https://raw.githubusercontent.com/0xMoonStarz/SAM/main/install.ps1 | iex
 
   sam install           # register MCP + create CLAUDE.md in current dir
+  sam update            # update to latest version
   sam status            # check if SAM is active
   sam doctor            # diagnose issues
 `);
@@ -332,6 +335,33 @@ function doctor() {
     }
     console.log(`\n${issues === 0 ? "All good! Restart Claude Code if SAM isn't active yet." : issues + " issue(s) found."}`);
 }
+function update() {
+    console.log("\nSAM Update");
+    console.log("==========\n");
+    const os = (0, os_1.platform)();
+    if (os === "win32") {
+        console.log("  Running: npm install -g github:0xMoonStarz/SAM");
+        try {
+            (0, child_process_1.execSync)("npm install -g github:0xMoonStarz/SAM", { stdio: "inherit", timeout: 60000 });
+            console.log("\n  Updated! Restart Claude Code to use the new version.");
+        }
+        catch {
+            console.log("\n  [!!] Failed. Try running as Administrator:");
+            console.log("  irm https://raw.githubusercontent.com/0xMoonStarz/SAM/main/install.ps1 | iex");
+        }
+    }
+    else {
+        console.log("  Running: sudo npm install -g github:0xMoonStarz/SAM");
+        try {
+            (0, child_process_1.execSync)("sudo npm install -g github:0xMoonStarz/SAM", { stdio: "inherit", timeout: 60000 });
+            console.log("\n  Updated! Restart Claude Code to use the new version.");
+        }
+        catch {
+            console.log("\n  [!!] Failed. Try manually:");
+            console.log("  curl -fsSL https://raw.githubusercontent.com/0xMoonStarz/SAM/main/install.sh | bash");
+        }
+    }
+}
 const command = process.argv[2];
 switch (command) {
     case "install":
@@ -345,6 +375,9 @@ switch (command) {
         break;
     case "status":
         showStatus();
+        break;
+    case "update":
+        update();
         break;
     case "doctor":
         doctor();
