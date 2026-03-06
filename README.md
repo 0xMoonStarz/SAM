@@ -49,7 +49,17 @@ Every dollar goes directly to maintaining SAM, shipping new features, and keepin
 
 **Requirements:** [Node.js](https://nodejs.org) >= 18 + [Claude Code](https://docs.anthropic.com/en/docs/claude-code) >= 2.0
 
-### One command (all platforms)
+### Option 1: Ask Claude to install it
+
+If you already have Claude Code running, just paste this:
+
+> Add this to my global `~/.claude/CLAUDE.md` file, then follow the install instructions yourself:
+>
+> `# SAM — Install: npm install -g github:0xMoonStarz/SAM — then run: sam install — then restart Claude Code. Docs: https://github.com/0xMoonStarz/SAM`
+
+Claude will read it, install SAM, and configure everything. After restart, SAM is active globally.
+
+### Option 2: One command (all platforms)
 
 ```bash
 npm install -g github:0xMoonStarz/SAM
@@ -59,7 +69,7 @@ That's it. SAM auto-compiles and auto-registers its MCP server. **Restart Claude
 
 > On Linux, if you get a permission error, try with `sudo` or use [nvm](https://github.com/nvm-sh/nvm) (recommended).
 
-### Alternative: install script
+### Option 3: Install script
 
 **Linux / macOS:**
 ```bash
@@ -70,6 +80,10 @@ curl -fsSL https://raw.githubusercontent.com/0xMoonStarz/SAM/main/install.sh | b
 ```powershell
 irm https://raw.githubusercontent.com/0xMoonStarz/SAM/main/install.ps1 | iex
 ```
+
+### After install
+
+SAM auto-registers in `~/.claude/settings.json`, `~/.mcp.json`, and adds self-repair instructions to `~/.claude/CLAUDE.md`. If SAM stops working, just tell Claude **"fix SAM"** and it will know what to do.
 
 ### Optional: add SAM protocol to your project
 
