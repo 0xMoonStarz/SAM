@@ -54,7 +54,7 @@ Every dollar goes directly to maintaining SAM, shipping new features, and keepin
 If you already have Claude Code running, paste this prompt:
 
 ```
-Install SAM for me. Run: npm install -g github:0xMoonStarz/SAM && sam install — then tell me to restart Claude Code.
+Install SAM for me. First check if Node.js >= 18 and npm are installed. If not, install them and add to PATH. Then run: npm install -g github:0xMoonStarz/SAM && sam install — then tell me to restart Claude Code.
 ```
 
 Claude will handle everything. After restart, SAM is active globally.
