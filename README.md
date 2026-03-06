@@ -6,10 +6,6 @@
 [![MCP](https://img.shields.io/badge/MCP-Compatible-purple)]()
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-2.0%2B-orange)]()
 
-> **A V8 with steroids for Claude Code.** SAM serializes noisy context into pure, lightweight abstractions — like optimizing bandwidth on a 56k modem but with supercomputer power.
-
-**SAM is 100% open source under the MIT license.** Fork it, modify it, distribute it, use it commercially — no restrictions.
-
 ---
 
 ## Support SAM
@@ -38,6 +34,50 @@ Every dollar goes directly to maintaining SAM, shipping new features, and keepin
 
 ---
 
+## Install
+
+**Requirements:** [Node.js](https://nodejs.org) >= 18 + [Claude Code](https://docs.anthropic.com/en/docs/claude-code) >= 2.0
+
+### Linux / macOS
+
+```bash
+sudo npm install -g github:0xMoonStarz/SAM
+sam install
+```
+
+### Windows (CMD or PowerShell as Administrator)
+
+```cmd
+npm install -g github:0xMoonStarz/SAM
+sam install
+```
+
+### After install
+
+Restart Claude Code. SAM is now active. That's it.
+
+`sam install` does two things:
+1. **Registers the MCP server globally** in `~/.claude/settings.json` — works in every project, no per-project setup
+2. **Creates/appends** the compression protocol to the current project's `CLAUDE.md`
+
+### Verify
+
+```bash
+sam --help          # CLI is working
+sam dict            # Show persisted dictionary
+sam presets          # Show available framework presets
+```
+
+### Uninstall
+
+```bash
+sam uninstall
+sudo npm uninstall -g sam-cc    # Linux/macOS
+npm uninstall -g sam-cc         # Windows
+```
+
+---
+
 ## What is SAM?
 
 SAM is an **MCP server + behavioral protocol** that reduces Claude Code token usage by **3-30x**. It works by changing *how Claude communicates internally* — not a text compressor, but an abstraction machine that eliminates redundancy at the source.
@@ -52,6 +92,8 @@ SAM is an **MCP server + behavioral protocol** that reduces Claude Code token us
                     Normal responses to you
                     (SAM is invisible to the user)
 ```
+
+**SAM is 100% open source under the MIT license.** Fork it, modify it, distribute it, use it commercially — no restrictions.
 
 ---
 
@@ -107,45 +149,6 @@ Measured across actual Claude Code sessions — not benchmarks, real work:
 | Short (1-2 tasks) | **3-5x** | 60-80% | Small bug fixes, quick edits |
 | Medium (5-10 tasks) | **5-15x** | 80-93% | Feature development, refactors |
 | Long (20+ tasks) | **10-30x** | 90-97% | Large refactors, multi-file changes |
-
----
-
-## Install
-
-### 1. Install the package
-
-```bash
-npm install -g sam-cc
-```
-
-### 2. Activate SAM
-
-```bash
-sam install
-```
-
-This does two things:
-1. **Registers the MCP server globally** in `~/.claude/settings.json` — works in every project, no per-project setup
-2. **Creates/appends** the compression protocol to the current project's `CLAUDE.md`
-
-### 3. Restart Claude Code
-
-SAM is now active everywhere. That's it.
-
-### Windows
-
-```powershell
-npm install -g sam-cc
-sam install
-```
-
-### Verify
-
-```bash
-sam --help          # CLI is working
-sam dict            # Show persisted dictionary
-sam presets          # Show available framework presets
-```
 
 ---
 
@@ -250,40 +253,11 @@ sam presets
 |---------|-------------|
 | `sam install` | Register MCP server globally + create CLAUDE.md protocol in current dir |
 | `sam uninstall` | Remove SAM from global settings + clean legacy entries |
+| `sam status` | Show SAM registration status and dictionary info |
+| `sam doctor` | Diagnose configuration issues |
 | `sam presets` | Show available framework presets |
 | `sam dict` | Show persisted dictionary (aliases across sessions) |
 | `sam help` | Show help |
-
----
-
-## Project Structure
-
-```
-src/
-  mcp-server/
-    index.ts          MCP server (21 tools, stdio transport)
-    dictionary.ts     Alias registry + persistence + presets
-    encoder.ts        7-step compress/decompress pipeline
-    metrics.ts        Token savings tracker + lifetime persistence
-    persistence.ts    Save/load to ~/.sam/
-    context.ts        Journal + snapshots manager
-    workspace.ts      In-memory file cache
-    macros.ts         Built-in macro definitions
-  protocol/
-    spec.ts           Protocol specification (operations, status codes, shortcuts)
-    parser.ts         Formal BNF grammar (lexer + recursive descent parser)
-  presets/
-    index.ts          Auto-detection logic
-    react.ts          React/Next.js preset
-    node.ts           Node/TypeScript preset
-    python.ts         Python preset
-  cli/
-    index.ts          CLI entry point (install, uninstall, presets, dict)
-templates/
-  CLAUDE.md.template  Protocol rules injected into projects
-```
-
-~2,500 lines of TypeScript. No external runtime dependencies beyond `@modelcontextprotocol/sdk`.
 
 ---
 
@@ -310,10 +284,12 @@ SAM is **open source** under the **MIT license**. We welcome contributions from 
 ### How to Contribute
 
 1. **Fork** the repo
-2. **Branch** from `main`
+2. **Branch** from `community-pr`
 3. Make your changes
-4. **Open a PR** with a clear description
+4. **Open a PR** back to `community-pr` with a clear description
 5. Discuss and iterate
+
+Proposals that get approved will be merged into `dev`, tested, and eventually promoted to `main`.
 
 **Ideas welcome:** new presets, compression strategies, tool improvements, documentation, bug fixes — everything counts.
 
