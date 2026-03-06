@@ -27,13 +27,27 @@ function getSamMcpConfig() {
         args: [getServerPath()],
     };
 }
-// All possible Claude Code settings locations
+// Detect Claude Code version
+function getClaudeVersion() {
+    try {
+        const out = (0, child_process_1.execSync)("claude --version 2>/dev/null || echo ''", { encoding: "utf-8", timeout: 5000 }).trim();
+        // Output is like "2.1.70 (Claude Code)" or empty
+        const match = out.match(/^(\d+\.\d+\.\d+)/);
+        return match ? match[1] : null;
+    }
+    catch {
+        return null;
+    }
+}
+// All possible Claude Code MCP config locations
 function getClaudeSettingsPaths() {
     const home = (0, os_1.homedir)();
     const paths = [];
     const os = (0, os_1.platform)();
     // Standard: ~/.claude/settings.json (all platforms)
     paths.push((0, path_1.join)(home, ".claude", "settings.json"));
+    // Global .mcp.json in home (works as fallback for newer versions)
+    paths.push((0, path_1.join)(home, ".mcp.json"));
     // XDG config on Linux: ~/.config/claude/settings.json
     if (os === "linux") {
         const xdgConfig = process.env.XDG_CONFIG_HOME || (0, path_1.join)(home, ".config");
@@ -123,8 +137,12 @@ function postinstallCmd() {
     try {
         if (!(0, fs_1.existsSync)(getServerPath()))
             return; // dist not ready yet, skip silently
+        // Register in settings.json (primary)
         const { path } = findClaudeSettings();
-        registerMcpInFile(path, true); // quiet mode
+        registerMcpInFile(path, true);
+        // Also register in ~/.mcp.json (fallback for versions that use it)
+        const mcpJsonPath = (0, path_1.join)((0, os_1.homedir)(), ".mcp.json");
+        registerMcpInFile(mcpJsonPath, true);
     }
     catch {
         // Silently ignore all errors — postinstall must not fail
@@ -137,20 +155,35 @@ function installCmd() {
     if (!validateServerPath()) {
         process.exit(1);
     }
-    console.log("  MCP Server: " + getServerPath());
-    console.log("");
-    const { path, exists } = findClaudeSettings();
-    if (exists) {
-        console.log("  Found Claude settings: " + path);
-        registerMcpInFile(path);
+    // Detect Claude Code
+    const claudeVersion = getClaudeVersion();
+    if (claudeVersion) {
+        console.log("  Claude Code: v" + claudeVersion);
     }
     else {
-        console.log("  No existing Claude settings found.");
+        console.log("  Claude Code: not found in PATH (install from https://docs.anthropic.com/en/docs/claude-code)");
+    }
+    console.log("  MCP Server:  " + getServerPath());
+    console.log("");
+    // Register in primary settings location
+    const { path, exists } = findClaudeSettings();
+    let registered = false;
+    if (exists) {
+        console.log("  Found: " + path);
+        registered = registerMcpInFile(path);
+    }
+    else {
         console.log("  Creating: " + path);
-        registerMcpInFile(path);
+        registered = registerMcpInFile(path);
+    }
+    // Also register in ~/.mcp.json as fallback
+    const mcpJsonPath = (0, path_1.join)((0, os_1.homedir)(), ".mcp.json");
+    registerMcpInFile(mcpJsonPath);
+    if (!registered) {
         console.log("");
-        console.log("  If Claude Code doesn't detect SAM after restart,");
-        console.log("  check where your Claude stores settings:");
+        console.log("  [!!] Could not register in primary location.");
+        console.log("  SAM was registered in ~/.mcp.json as fallback.");
+        console.log("  Check these locations manually:");
         for (const c of getClaudeSettingsPaths()) {
             console.log("    " + c);
         }
@@ -322,6 +355,14 @@ function doctorCmd() {
     else {
         console.log("  [!!] Node.js " + process.versions.node + " — need >= 18");
         issues++;
+    }
+    // Claude Code version
+    const claudeVer = getClaudeVersion();
+    if (claudeVer) {
+        console.log("  [OK] Claude Code " + claudeVer);
+    }
+    else {
+        console.log("  [--] Claude Code not found in PATH");
     }
     // Server file
     const serverPath = getServerPath();
