@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join, resolve } from "path";
-import { homedir } from "os";
-import { execSync } from "child_process";
+import { homedir, platform } from "os";
 import { detectPresets, ALL_PRESETS } from "../presets/index.js";
 import { loadPersisted, getDictPath } from "../mcp-server/persistence.js";
 
@@ -11,38 +10,102 @@ const SAM_MCP_CONFIG = {
   args: [resolve(join(__dirname, "..", "mcp-server", "index.js"))],
 };
 
-function getClaudeSettingsPath(): string {
-  const dir = join(homedir(), ".claude");
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  return join(dir, "settings.json");
+// All possible Claude Code settings locations
+function getClaudeSettingsPaths(): string[] {
+  const home = homedir();
+  const paths: string[] = [];
+  const os = platform();
+
+  // Standard: ~/.claude/settings.json (all platforms)
+  paths.push(join(home, ".claude", "settings.json"));
+
+  // XDG config on Linux: ~/.config/claude/settings.json
+  if (os === "linux") {
+    const xdgConfig = process.env.XDG_CONFIG_HOME || join(home, ".config");
+    paths.push(join(xdgConfig, "claude", "settings.json"));
+  }
+
+  // macOS: ~/Library/Application Support/Claude/settings.json
+  if (os === "darwin") {
+    paths.push(join(home, "Library", "Application Support", "Claude", "settings.json"));
+  }
+
+  // Windows: %APPDATA%/Claude/settings.json
+  if (os === "win32" && process.env.APPDATA) {
+    paths.push(join(process.env.APPDATA, "Claude", "settings.json"));
+  }
+
+  return paths;
 }
 
-function installMcpServer(): void {
-  const settingsPath = getClaudeSettingsPath();
+// Find existing settings file, or return default path
+function findClaudeSettings(): { path: string; exists: boolean } {
+  const candidates = getClaudeSettingsPaths();
+
+  // First check which ones already exist
+  for (const p of candidates) {
+    if (existsSync(p)) {
+      return { path: p, exists: true };
+    }
+  }
+
+  // None exist — use the standard path
+  return { path: candidates[0], exists: false };
+}
+
+function registerMcpInFile(settingsPath: string): boolean {
+  const dir = resolve(settingsPath, "..");
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 
   let config: Record<string, unknown> = {};
   if (existsSync(settingsPath)) {
     try {
       config = JSON.parse(readFileSync(settingsPath, "utf-8"));
     } catch {
-      console.error("! Could not parse " + settingsPath + " — using defaults");
+      console.error("  ! Could not parse " + settingsPath + " — using defaults");
     }
   }
 
-  // Install globally in ~/.claude/settings.json
   if (!config.mcpServers || typeof config.mcpServers !== "object") {
     config.mcpServers = {};
   }
   const servers = config.mcpServers as Record<string, unknown>;
 
   if (servers["sam"]) {
-    console.log("~ SAM already registered globally");
-    return;
+    console.log("  ~ SAM already registered in " + settingsPath);
+    return true;
   }
 
   servers["sam"] = SAM_MCP_CONFIG;
   writeFileSync(settingsPath, JSON.stringify(config, null, 2));
-  console.log("+ SAM MCP server registered globally in ~/.claude/settings.json");
+  console.log("  + Registered in " + settingsPath);
+  return true;
+}
+
+function installMcpServer(): void {
+  console.log("\nSAM Install");
+  console.log("===========\n");
+  console.log("MCP Server path: " + SAM_MCP_CONFIG.args[0]);
+  console.log("");
+
+  const { path, exists } = findClaudeSettings();
+
+  if (exists) {
+    console.log("Found Claude settings: " + path);
+    registerMcpInFile(path);
+  } else {
+    // No settings found — register in default + warn
+    console.log("No existing Claude settings found.");
+    console.log("Creating default: " + path);
+    registerMcpInFile(path);
+    console.log("");
+    console.log("  If Claude Code doesn't detect SAM after restart,");
+    console.log("  check where your Claude stores settings:");
+    const candidates = getClaudeSettingsPaths();
+    for (const c of candidates) {
+      console.log("    " + c);
+    }
+  }
 }
 
 function installClaudeMd(): void {
@@ -51,23 +114,23 @@ function installClaudeMd(): void {
   const templatePath = resolve(join(__dirname, "..", "..", "templates", "CLAUDE.md.template"));
 
   if (!existsSync(templatePath)) {
-    console.error("! Template not found:", templatePath);
-    process.exit(1);
+    console.error("\n  ! Template not found: " + templatePath);
+    return;
   }
 
   const template = readFileSync(templatePath, "utf-8");
 
   if (existsSync(claudeMdPath)) {
     const existing = readFileSync(claudeMdPath, "utf-8");
-    if (existing.includes("SAM Token Compression") || existing.includes("SAMlang")) {
-      console.log("~ CLAUDE.md already has SAM protocol");
+    if (existing.includes("SAM Token Compression") || existing.includes("SAMlang") || existing.includes("sl_spec")) {
+      console.log("  ~ CLAUDE.md already has SAM protocol");
       return;
     }
     writeFileSync(claudeMdPath, existing + "\n\n" + template);
-    console.log("~ Appended SAM protocol to CLAUDE.md");
+    console.log("  ~ Appended SAM protocol to CLAUDE.md");
   } else {
     writeFileSync(claudeMdPath, template);
-    console.log("+ Created CLAUDE.md with SAM protocol");
+    console.log("  + Created CLAUDE.md with SAM protocol");
   }
 }
 
@@ -75,10 +138,7 @@ function detectAndReport(): void {
   const cwd = process.cwd();
   const presets = detectPresets(cwd);
   if (presets.length > 0) {
-    console.log(`Detected frameworks: ${presets.map((p) => p.name).join(", ")}`);
-    console.log("Presets will be auto-loaded when SAM MCP server starts.");
-  } else {
-    console.log("No framework presets detected. Base protocol active.");
+    console.log("  Detected: " + presets.map((p) => p.name).join(", "));
   }
 }
 
@@ -121,138 +181,108 @@ Commands:
   help       Show this message
 
 Usage:
-  npm install -g sam-cc
-  sam install           # global MCP + CLAUDE.md in current dir
+  Linux/macOS:  sudo npm install -g github:0xMoonStarz/SAM
+  Windows:      npm install -g github:0xMoonStarz/SAM  (as Administrator)
+
+  sam install           # register MCP + create CLAUDE.md in current dir
   sam status            # check if SAM is active
   sam doctor            # diagnose issues
 `);
 }
 
 function uninstall(): void {
-  // Remove from global settings
-  const settingsPath = getClaudeSettingsPath();
-  if (existsSync(settingsPath)) {
-    let config: Record<string, any>;
-    try { config = JSON.parse(readFileSync(settingsPath, "utf-8")); } catch { return; }
-    if (config.mcpServers?.sam) {
-      delete config.mcpServers.sam;
-      writeFileSync(settingsPath, JSON.stringify(config, null, 2));
-      console.log("- Removed SAM MCP server from global settings");
-    }
-    // Also clean legacy "samlang" entries
-    if (config.mcpServers?.samlang) {
-      delete config.mcpServers.samlang;
-      writeFileSync(settingsPath, JSON.stringify(config, null, 2));
-      console.log("- Removed legacy samlang entry");
-    }
+  console.log("\nSAM Uninstall");
+  console.log("=============\n");
+
+  // Remove from all possible settings locations
+  const candidates = getClaudeSettingsPaths();
+  let removed = false;
+
+  for (const settingsPath of candidates) {
+    if (!existsSync(settingsPath)) continue;
+    try {
+      const config = JSON.parse(readFileSync(settingsPath, "utf-8"));
+      let changed = false;
+      if (config.mcpServers?.sam) {
+        delete config.mcpServers.sam;
+        changed = true;
+      }
+      if (config.mcpServers?.samlang) {
+        delete config.mcpServers.samlang;
+        changed = true;
+      }
+      if (changed) {
+        writeFileSync(settingsPath, JSON.stringify(config, null, 2));
+        console.log("  - Removed from " + settingsPath);
+        removed = true;
+      }
+    } catch { /* skip corrupted files */ }
   }
 
-  // Also clean legacy per-project entries in ~/.claude.json
+  // Also clean legacy ~/.claude.json
   const legacyPath = join(homedir(), ".claude.json");
   if (existsSync(legacyPath)) {
-    let config: Record<string, any>;
-    try { config = JSON.parse(readFileSync(legacyPath, "utf-8")); } catch { return; }
-    let changed = false;
-    if (config.projects) {
-      for (const proj of Object.values(config.projects) as Record<string, unknown>[]) {
-        const servers = proj.mcpServers as Record<string, unknown> | undefined;
-        if (servers?.samlang) { delete servers.samlang; changed = true; }
-        if (servers?.sam) { delete servers.sam; changed = true; }
-      }
-    }
-    if (changed) {
-      writeFileSync(legacyPath, JSON.stringify(config, null, 2));
-      console.log("- Cleaned legacy per-project entries from ~/.claude.json");
-    }
-  }
-}
-
-function update(): void {
-  const repoDir = resolve(join(__dirname, "..", ".."));
-  const gitDir = join(repoDir, ".git");
-
-  if (!existsSync(gitDir)) {
-    console.log("! Not a git repository. If you installed via npm, run:");
-    console.log("  npm install -g sam-cc@latest");
-    return;
-  }
-
-  console.log("SAM Update");
-  console.log("==========");
-
-  try {
-    console.log("  Fetching from origin...");
-    execSync("git fetch origin main --quiet", { cwd: repoDir, timeout: 10000, stdio: ["pipe", "pipe", "pipe"] });
-
-    const local = execSync("git rev-parse HEAD", { cwd: repoDir, encoding: "utf-8" }).trim();
-    const remote = execSync("git rev-parse origin/main", { cwd: repoDir, encoding: "utf-8" }).trim();
-
-    if (local === remote) {
-      console.log("  Already up to date. (" + local.slice(0, 7) + ")");
-      return;
-    }
-
-    const behind = execSync("git rev-list HEAD..origin/main --count", { cwd: repoDir, encoding: "utf-8" }).trim();
-    console.log(`  ${behind} new commit(s) available`);
-
-    console.log("  Pulling changes...");
-    execSync("git pull origin main --quiet", { cwd: repoDir, timeout: 15000, stdio: ["pipe", "pipe", "pipe"] });
-
-    console.log("  Building...");
-    execSync("npm run build", { cwd: repoDir, timeout: 30000, stdio: ["pipe", "pipe", "pipe"] });
-
-    const newHead = execSync("git rev-parse HEAD", { cwd: repoDir, encoding: "utf-8" }).trim();
-    console.log(`  Updated: ${local.slice(0, 7)} -> ${newHead.slice(0, 7)}`);
-
-    // Show what changed
     try {
-      const log = execSync(`git log --oneline ${local}..${newHead}`, { cwd: repoDir, encoding: "utf-8" }).trim();
-      console.log("\n  Changes:");
-      for (const line of log.split("\n")) {
-        console.log("    " + line);
+      const config = JSON.parse(readFileSync(legacyPath, "utf-8"));
+      let changed = false;
+      if (config.projects) {
+        for (const proj of Object.values(config.projects) as Record<string, unknown>[]) {
+          const servers = proj.mcpServers as Record<string, unknown> | undefined;
+          if (servers?.samlang) { delete servers.samlang; changed = true; }
+          if (servers?.sam) { delete servers.sam; changed = true; }
+        }
       }
-    } catch { /* ignore */ }
+      if (changed) {
+        writeFileSync(legacyPath, JSON.stringify(config, null, 2));
+        console.log("  - Cleaned legacy entries from ~/.claude.json");
+        removed = true;
+      }
+    } catch { /* skip */ }
+  }
 
-    console.log("\n+ SAM updated. Restart Claude Code to use the new version.");
-  } catch (e: unknown) {
-    const err = e as { message?: string };
-    console.error("! Update failed: " + (err.message || "unknown error"));
+  if (!removed) {
+    console.log("  No SAM registration found to remove.");
   }
 }
 
 function showStatus(): void {
-  const settingsPath = getClaudeSettingsPath();
-  console.log("SAM Status");
-  console.log("==========");
-  // Check global registration
-  if (existsSync(settingsPath)) {
+  console.log("\nSAM Status");
+  console.log("==========\n");
+
+  // Check all possible locations
+  const candidates = getClaudeSettingsPaths();
+  let found = false;
+
+  for (const settingsPath of candidates) {
+    if (!existsSync(settingsPath)) continue;
     try {
       const config = JSON.parse(readFileSync(settingsPath, "utf-8"));
       if (config.mcpServers?.sam) {
-        console.log("  MCP Server: REGISTERED (global)");
-        console.log("  Server path: " + (config.mcpServers.sam.args?.[0] || "unknown"));
-      } else {
-        console.log("  MCP Server: NOT REGISTERED");
-        console.log("  Run: sam install");
+        console.log("  MCP Server: REGISTERED");
+        console.log("  Settings:   " + settingsPath);
+        console.log("  Server:     " + (config.mcpServers.sam.args?.[0] || "unknown"));
+        found = true;
+        break;
       }
-    } catch {
-      console.log("  MCP Server: ERROR reading settings.json");
-    }
-  } else {
-    console.log("  MCP Server: NOT REGISTERED (no settings.json)");
+    } catch { /* skip */ }
   }
-  // Check dictionary
+
+  if (!found) {
+    console.log("  MCP Server: NOT REGISTERED");
+    console.log("  Run: sam install");
+  }
+
   const persisted = loadPersisted();
   const fileCount = Object.keys(persisted.files).length;
   const customCount = Object.keys(persisted.custom).length;
   console.log(`  Dictionary: ${fileCount} files, ${customCount} custom aliases`);
-  console.log(`  Presets: ${persisted.presets.length ? persisted.presets.join(", ") : "none"}`);
-  console.log(`  Version: 1.0.0`);
+  console.log(`  Presets:    ${persisted.presets.length ? persisted.presets.join(", ") : "none"}`);
+  console.log(`  Version:    1.0.0`);
 }
 
 function doctor(): void {
-  console.log("SAM Doctor");
-  console.log("==========");
+  console.log("\nSAM Doctor");
+  console.log("==========\n");
   let issues = 0;
 
   // Node version
@@ -264,29 +294,44 @@ function doctor(): void {
     issues++;
   }
 
-  // Settings.json
-  const settingsPath = getClaudeSettingsPath();
-  if (existsSync(settingsPath)) {
-    try {
-      const config = JSON.parse(readFileSync(settingsPath, "utf-8"));
-      if (config.mcpServers?.sam) {
-        const serverPath = config.mcpServers.sam.args?.[0];
-        if (serverPath && existsSync(serverPath)) {
-          console.log("  [OK] MCP server registered and file exists");
-        } else {
-          console.log("  [!!] MCP server registered but file missing: " + serverPath);
-          issues++;
-        }
-      } else {
-        console.log("  [!!] MCP server not registered. Run: sam install");
-        issues++;
-      }
-    } catch {
-      console.log("  [!!] settings.json is corrupted");
-      issues++;
+  // Check all settings locations
+  const candidates = getClaudeSettingsPaths();
+  let foundSettings = false;
+  let serverRegistered = false;
+
+  console.log("");
+  console.log("  Settings locations checked:");
+  for (const p of candidates) {
+    const exists = existsSync(p);
+    let hasSam = false;
+    if (exists) {
+      try {
+        const config = JSON.parse(readFileSync(p, "utf-8"));
+        hasSam = !!config.mcpServers?.sam;
+      } catch { /* skip */ }
     }
+    const status = !exists ? "--" : hasSam ? "OK" : "..";
+    const label = !exists ? "not found" : hasSam ? "SAM registered" : "exists, no SAM";
+    console.log(`  [${status}] ${p} (${label})`);
+    if (exists) foundSettings = true;
+    if (hasSam) serverRegistered = true;
+  }
+
+  if (!foundSettings) {
+    console.log("  [!!] No Claude settings file found anywhere");
+    issues++;
+  } else if (!serverRegistered) {
+    console.log("  [!!] Settings found but SAM not registered. Run: sam install");
+    issues++;
+  }
+
+  // Server file exists
+  console.log("");
+  const distPath = SAM_MCP_CONFIG.args[0];
+  if (existsSync(distPath)) {
+    console.log("  [OK] Server file: " + distPath);
   } else {
-    console.log("  [!!] No ~/.claude/settings.json found");
+    console.log("  [!!] Server file missing: " + distPath);
     issues++;
   }
 
@@ -295,25 +340,16 @@ function doctor(): void {
   if (existsSync(dictPath)) {
     try {
       JSON.parse(readFileSync(dictPath, "utf-8"));
-      console.log("  [OK] Dictionary file valid");
+      console.log("  [OK] Dictionary: " + dictPath);
     } catch {
-      console.log("  [!!] Dictionary file corrupted: " + dictPath);
+      console.log("  [!!] Dictionary corrupted: " + dictPath);
       issues++;
     }
   } else {
-    console.log("  [--] No dictionary file yet (created on first use)");
+    console.log("  [--] Dictionary: not created yet (normal on first run)");
   }
 
-  // dist/ check
-  const distPath = join(__dirname, "..", "mcp-server", "index.js");
-  if (existsSync(distPath)) {
-    console.log("  [OK] Compiled server exists");
-  } else {
-    console.log("  [!!] dist/mcp-server/index.js missing. Run: npm run build");
-    issues++;
-  }
-
-  console.log(`\n${issues === 0 ? "All good!" : issues + " issue(s) found."}`);
+  console.log(`\n${issues === 0 ? "All good! Restart Claude Code if SAM isn't active yet." : issues + " issue(s) found."}`);
 }
 
 const command = process.argv[2];
@@ -323,7 +359,7 @@ switch (command) {
     installMcpServer();
     installClaudeMd();
     detectAndReport();
-    console.log("\nd SAM installed globally. Restart Claude Code to activate.");
+    console.log("\nRestart Claude Code to activate SAM.");
     break;
   case "uninstall":
     uninstall();
@@ -333,9 +369,6 @@ switch (command) {
     break;
   case "doctor":
     doctor();
-    break;
-  case "update":
-    update();
     break;
   case "presets":
     showPresets();
