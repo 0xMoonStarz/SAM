@@ -1,27 +1,41 @@
-# SAM installer for Windows
-Write-Host "SAM - Serialized Abstraction Machine for Claude Code"
-Write-Host "====================================================="
+# SAM v1.0 installer for Windows
+Write-Host ""
+Write-Host "  SAM v1.0 - Serialized Abstraction Machine" -ForegroundColor Cyan
+Write-Host "  ==========================================" -ForegroundColor Cyan
+Write-Host ""
 
 # Check Node.js
 try {
     $nodeVersion = (node -v) -replace 'v','' -split '\.' | Select-Object -First 1
     if ([int]$nodeVersion -lt 18) {
-        Write-Host "! Node.js 18+ required. Current: $(node -v)" -ForegroundColor Red
+        Write-Host "  [!!] Node.js 18+ required. Current: $(node -v)" -ForegroundColor Red
         exit 1
     }
+    Write-Host "  [OK] Node.js $(node -v)" -ForegroundColor Green
 } catch {
-    Write-Host "! Node.js is required. Install from https://nodejs.org" -ForegroundColor Red
+    Write-Host "  [!!] Node.js is required. Install from https://nodejs.org" -ForegroundColor Red
     exit 1
 }
 
-# Install globally
-Write-Host "Installing sam-cc globally..."
-npm install -g sam-cc
+# Clean previous install
+$installed = npm list -g sam-cc 2>$null
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "  [..] Removing previous SAM install..."
+    npm uninstall -g sam-cc 2>$null
+}
 
-# Run installer
-Write-Host "Configuring MCP server..."
+# Install from GitHub
+Write-Host "  [..] Installing from GitHub..."
+npm install -g github:0xMoonStarz/SAM
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  [!!] Install failed. Try running as Administrator." -ForegroundColor Red
+    exit 1
+}
+
+# Configure
+Write-Host "  [..] Configuring MCP server..."
 sam install
 
 Write-Host ""
-Write-Host "d SAM installed successfully!" -ForegroundColor Green
-Write-Host "Restart Claude Code to activate."
+Write-Host "  Done! Restart Claude Code to activate SAM." -ForegroundColor Green
+Write-Host ""
