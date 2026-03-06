@@ -1,10 +1,21 @@
-# <img src="https://img.shields.io/badge/SAM-v1.0-blue?style=for-the-badge" alt="SAM v1.0" /> Serialized Abstraction Machine
+# <img src="https://img.shields.io/badge/SAM-v1.0-blue?style=for-the-badge" alt="SAM v1.0" />
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![Open Source](https://img.shields.io/badge/Open%20Source-%E2%9D%A4-red)]()
 [![Node](https://img.shields.io/badge/Node-%3E%3D18-339933?logo=node.js)](https://nodejs.org)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-purple)]()
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-2.0%2B-orange)]()
+
+### What does SAM stand for?
+
+SAM is four things at once — each name describes a different layer of what it does:
+
+| | Name | What it means |
+|---|---|---|
+| **Standard** | **Semantic Alias Mapping** | Maps file paths, commands, and complex structures to short semantic aliases. Every `$0`, `&url`, status code — that's SAM turning verbose context into minimal references. The foundation layer. |
+| **Performance** | **Streamlined Architecture Modal** | A behavioral protocol that reshapes how Claude communicates. Zero filler, status codes, compressed output — SAM streamlines the entire architecture into an efficient modal that eliminates waste. |
+| **Engineering** | **Serialized Abstraction Machine** | A machine that serializes noisy context into pure, lightweight abstractions before Claude processes them. 7-step encoder pipeline, formal BNF grammar, bidirectional compression. |
+| **Memory** | **Super Access Memory** | Like RAM, but for Claude. External memory that survives context compaction — journal entries, snapshots, working sets. Your session state persists even when Claude's context window resets. |
 
 ---
 
