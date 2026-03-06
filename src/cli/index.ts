@@ -140,6 +140,83 @@ function registerMcpInFile(settingsPath: string, quiet: boolean = false): boolea
   return true;
 }
 
+// SAM instructions for global CLAUDE.md
+const SAM_GLOBAL_INSTRUCTIONS = `
+# SAM (Super Access Memory)
+
+SAM is installed globally as an MCP server for Claude Code.
+
+## If SAM tools (sl_spec, sl_read, etc.) are NOT available
+
+Run these commands to fix:
+\`\`\`bash
+sam doctor                    # diagnose the issue
+sam install                   # re-register MCP server
+\`\`\`
+
+If \`sam\` command is not found:
+\`\`\`bash
+npm install -g github:0xMoonStarz/SAM
+\`\`\`
+
+## If SAM tools ARE available
+
+Your FIRST action in every conversation MUST be \`sl_spec\`. This loads the protocol, restores memory, and registers project files.
+
+## MCP Server Locations
+
+SAM registers in both \`~/.claude/settings.json\` and \`~/.mcp.json\`.
+If Claude Code doesn't load SAM, copy \`~/.mcp.json\` to the project directory:
+\`\`\`bash
+cp ~/.mcp.json ./.mcp.json
+\`\`\`
+
+## Quick Reference
+
+- \`sl_spec\` — load protocol + restore memory (ALWAYS FIRST)
+- \`sl_read\` — read files compressed (instead of Read)
+- \`sl_bash\` — run commands compressed (instead of Bash)
+- \`sl_file\` — register file path as $N alias
+- \`sl_context add "note"\` — save to persistent journal
+- \`sl_snapshot "label"\` — save full session state
+- \`sam doctor\` — diagnose issues
+- \`sam update\` — update to latest version
+`.trim();
+
+const SAM_MARKER = "# SAM (Super Access Memory)";
+
+function installGlobalClaudeMd(quiet: boolean = false): void {
+  try {
+    const claudeMdPath = join(homedir(), ".claude", "CLAUDE.md");
+    const claudeDir = join(homedir(), ".claude");
+    if (!existsSync(claudeDir)) mkdirSync(claudeDir, { recursive: true });
+
+    if (existsSync(claudeMdPath)) {
+      const existing = readFileSync(claudeMdPath, "utf-8");
+      if (existing.includes(SAM_MARKER)) {
+        // Replace existing SAM section
+        const before = existing.split(SAM_MARKER)[0].trimEnd();
+        // Find end of SAM section (next # heading at same level or EOF)
+        const afterMarker = existing.substring(existing.indexOf(SAM_MARKER) + SAM_MARKER.length);
+        const nextHeadingMatch = afterMarker.match(/\n# [^#]/);
+        const after = nextHeadingMatch
+          ? afterMarker.substring(nextHeadingMatch.index!)
+          : "";
+        writeFileSync(claudeMdPath, (before ? before + "\n\n" : "") + SAM_GLOBAL_INSTRUCTIONS + after);
+        if (!quiet) console.log("  ~ Updated SAM section in ~/.claude/CLAUDE.md");
+      } else {
+        writeFileSync(claudeMdPath, existing.trimEnd() + "\n\n" + SAM_GLOBAL_INSTRUCTIONS + "\n");
+        if (!quiet) console.log("  + Appended SAM instructions to ~/.claude/CLAUDE.md");
+      }
+    } else {
+      writeFileSync(claudeMdPath, SAM_GLOBAL_INSTRUCTIONS + "\n");
+      if (!quiet) console.log("  + Created ~/.claude/CLAUDE.md with SAM instructions");
+    }
+  } catch {
+    if (!quiet) console.error("  [!!] Could not write to ~/.claude/CLAUDE.md");
+  }
+}
+
 // === COMMANDS ===
 
 function postinstallCmd(): void {
@@ -155,6 +232,9 @@ function postinstallCmd(): void {
     // Also register in ~/.mcp.json (fallback for versions that use it)
     const mcpJsonPath = join(homedir(), ".mcp.json");
     registerMcpInFile(mcpJsonPath, true);
+
+    // Add SAM instructions to global CLAUDE.md
+    installGlobalClaudeMd(true);
   } catch {
     // Silently ignore all errors — postinstall must not fail
   }
@@ -204,6 +284,9 @@ function installCmd(): void {
       console.log("    " + c);
     }
   }
+
+  // Global CLAUDE.md with SAM instructions
+  installGlobalClaudeMd();
 
   // CLAUDE.md in current project
   installClaudeMd();
